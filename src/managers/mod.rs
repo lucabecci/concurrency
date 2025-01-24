@@ -1,1 +1,1 @@
-pub(crate) mod event_based_manager;
+pub(crate) mod square_event_based_manager;

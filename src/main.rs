@@ -1,13 +1,14 @@
 
 mod managers;
 
-use managers::event_based_manager::EventBasedManager;
+use managers::square_event_based_manager::SquareEventBasedManager;
 
-fn main() {
+#[tokio::main]
+async fn main() {
     println!("Starting event based manager");
-    let manager = EventBasedManager::new(
-        vec![123], 3
-    );
+    let vector = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    let manager = SquareEventBasedManager::new(vector, 3).unwrap();
 
-    manager.execute();
+    let results = manager.execute().await;
+    println!("Results: {:?}", results);
 }
