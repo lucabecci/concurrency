@@ -26,38 +26,51 @@ impl SquareEventBasedManager {
         println!("Chunk size to use: {}", self.chunk_size);
         // Event channel to save the results
         // Use 32 to reduce the backpressure of the channel
-        let (tx, mut rx) = mpsc::channel(32);
+        let (sender, mut receiver) = mpsc::channel(32);
 
         // Parts of the state
         let chunks = self.divide();
 
+        // Sender handlers
+        let mut handles = Vec::new();
+
         let mut iteration = 0;
         for chunk_values in chunks {
             println!("Values: {:?}", chunk_values);
-            let tx = tx.clone();
+            // Clone the sender for the task::spawn context
+            let sender_clone = sender.clone();
             let chunk = chunk_values.to_vec();
 
-            task::spawn(async move {
-                let result: Vec<i32> = Self::calculate_chunk_squares(chunk).await;
-                if tx.send(result).await.is_err() {
+            // Handler of the sender context
+            let handle = task::spawn(async move {
+                let result: Vec<i32> = Self::calculate_square(chunk).await;
+                if sender_clone.send(result).await.is_err() {
                     eprint!("Error sending results to channel");
                 } else {
-                    println!("Chunk processed {}", iteration)
+                    println!("Iteration processed {}", iteration)
                 }
             });
+            handles.push(handle);
             iteration += 1;
+        }
+        // Drop the Sender after build all channels
+        drop(sender);
+
+        // Wait all tasks
+        for handle in handles {
+            handle.await.unwrap();
         }
 
         let mut completed_results: Vec<i32> = Vec::new();
-        while let Some(result) = rx.recv().await {
+        while let Some(result) = receiver.recv().await {
             completed_results.extend(result);
         }
         completed_results
     }
 
-    async fn calculate_chunk_squares(chunk: Vec<i32>) -> Vec<i32> {
+    async fn calculate_square(chunk: Vec<i32>) -> Vec<i32> {
         // Wait 10000 ms for the example
-        sleep(Duration::from_millis(1)).await;
+        sleep(Duration::from_millis(500)).await;
         // Use into_iter to get the original memory values of chunk
         chunk.into_iter().map(|x| x * x).collect()
     }
