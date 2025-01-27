@@ -8,16 +8,19 @@ pub struct SquareEventBasedManager {
     pub state: Vec<i32>,
     // Chunk Size to divide the State
     pub chunk_size: usize,
+    // Square calculate delay
+    pub delay: u64,
 }
 
 impl SquareEventBasedManager {
-    pub fn new(list: Vec<i32>, chunk_size: usize) -> Result<Self, &'static str> {
-        if(chunk_size < 1) {
+    pub fn new(list: Vec<i32>, chunk_size: usize, delay: u64) -> Result<Self, &'static str> {
+        if chunk_size < 1 {
             return Err("Chunk size must be at least 1");
         }
         Ok(Self {
             state: list,
-            chunk_size
+            chunk_size,
+            delay,
         })
     }
 
@@ -40,10 +43,11 @@ impl SquareEventBasedManager {
             // Clone the sender for the task::spawn context
             let sender_clone = sender.clone();
             let chunk = chunk_values.to_vec();
+            let delay = self.delay;
 
             // Handler of the sender context
             let handle = task::spawn(async move {
-                let result: Vec<i32> = Self::calculate_square(chunk).await;
+                let result: Vec<i32> = Self::calculate_square(chunk, delay).await;
                 if sender_clone.send(result).await.is_err() {
                     eprint!("Error sending results to channel");
                 } else {
@@ -68,9 +72,9 @@ impl SquareEventBasedManager {
         completed_results
     }
 
-    async fn calculate_square(chunk: Vec<i32>) -> Vec<i32> {
+   pub  async fn calculate_square(chunk: Vec<i32>, delay: u64) -> Vec<i32> {
         // Wait 10000 ms for the example
-        sleep(Duration::from_millis(500)).await;
+        sleep(Duration::from_millis(delay)).await;
         // Use into_iter to get the original memory values of chunk
         chunk.into_iter().map(|x| x * x).collect()
     }
